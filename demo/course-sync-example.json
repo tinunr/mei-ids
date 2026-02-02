@@ -1,0 +1,53 @@
+{
+    "groupId": "1234",
+    "courseData": {
+        "fullname": "Programação Java - Turma 2026",
+        "shortname": "JAVA2026",
+        "categoryid": 1,
+        "summary": "Curso de Programação Java para iniciantes"
+    },
+    "objectives": "Aprender os conceitos fundamentais de programação orientada a objetos usando Java",
+    "content": "1. Introdução ao Java\n2. Variáveis e Tipos de Dados\n3. Estruturas de Controle\n4. POO - Classes e Objetos\n5. Herança e Polimorfismo",
+    "methodology": "Aulas expositivas, práticas em laboratório, projetos individuais e em grupo",
+    "evaluation": "Provas escritas (40%), Trabalhos práticos (40%), Participação (20%)",
+    "bibliographyDescription": "DEITEL, Paul. Java: Como Programar. 10ª ed.\nSIERRA, Kathy. Use a Cabeça! Java.",
+    "students": [
+        {
+            "personId": "1001",
+            "username": "joao.silva",
+            "name": "João",
+            "shortname": "Silva",
+            "email": "joao.silva@example.com"
+        },
+        {
+            "personId": "1002",
+            "username": "maria.santos",
+            "name": "Maria",
+            "shortname": "Santos",
+            "email": "maria.santos@example.com"
+        },
+        {
+            "personId": "1003",
+            "username": "pedro.costa",
+            "name": "Pedro",
+            "shortname": "Costa",
+            "email": "pedro.costa@example.com"
+        }
+    ],
+    "teachers": [
+        {
+            "personId": "2001",
+            "username": "prof.ana",
+            "name": "Ana",
+            "shortname": "Professora",
+            "email": "ana.prof@example.com"
+        },
+        {
+            "personId": "2002",
+            "username": "prof.carlos",
+            "name": "Carlos",
+            "shortname": "Professor",
+            "email": "carlos.prof@example.com"
+        }
+    ]
+}

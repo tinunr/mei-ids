@@ -1,0 +1,1133 @@
+<?php
+
+/**
+ * <--- Copyright 2005-2010 de Solis - Cooperativa de Soluções Livres Ltda.
+ *
+ * Este arquivo é parte do programa Sagu.
+ *
+ * O Sagu é um software livre; você pode redistribuí-lo e/ou modificá-lo
+ * dentro dos termos da Licença Pública Geral GNU como publicada pela Fundação
+ * do Software Livre (FSF); na versão 2 da Licença.
+ *
+ * Este programa é distribuído na esperança que possa ser útil, mas SEM
+ * NENHUMA GARANTIA; sem uma garantia implícita de ADEQUAÇÃO a qualquer MERCADO
+ * ou APLICAÇÃO EM PARTICULAR. Veja a Licença Pública Geral GNU/GPL em
+ * português para maiores detalhes.
+ *
+ * Você deve ter recebido uma cópia da Licença Pública Geral GNU, sob o título
+ * "LICENCA.txt", junto com este programa, se não, acesse o Portal do Software
+ * Público Brasileiro no endereço www.softwarepublico.gov.br ou escreva para a
+ * Fundação do Software Livre (FSF) Inc., 51 Franklin St, Fifth Floor, Boston,
+ * MA 02110-1301, USA --->
+ *
+ * Class to manipulate the acdMoodleSubscription table
+ *
+ * @author Fabiano Tomasini [fabiano@solis.coop.br]
+ *
+ * @version $Id$
+ *
+ * \b Maintainers: \n
+ * Fabiano Tomasini [fabiano@solis.coop.br]
+ *
+ * @since
+ * Class created on 12/08/2010
+ *
+ **/
+
+class BusinessAcademicBusMoodle extends Business
+{
+
+    /**
+     * Make a connection to the database
+     *
+     * @param $module (string): The module whose database we should connect. If null, the actual module database is connected.
+     *
+     * @return (object): A MIOLO Database connection
+     **/
+    public function getDatabase($module = null)
+    {
+        $MIOLO = MIOLO::getInstance();
+        $MIOLO->getClass('basic', 'sagu');
+        $module = is_null($module) ? 'academic' : $module;
+
+        return $MIOLO->getDatabase($module);
+    }
+
+    /**
+     * Synchronize acdmoodlesubscription data with sagu
+     *
+     * @param $groupId (string): The groupId
+     *
+     * @return (null)
+     **/
+    public function synchronize($groupId)
+    {
+        $MIOLO = MIOLO::getInstance();
+        $db = $this->getDatabase();
+
+        //Insert student on table acdmoodlesubscription
+        $sql = "SELECT DISTINCT D.miolousername,
+                                A.groupId,
+                                'f' as isteacher,
+                                null as processed,
+                                D.personId,
+								D.name,
+                                D.shortname,
+								D.email
+                           FROM acdenroll A
+                     INNER JOIN acdcontract B
+                             ON (A.contractId = B.contractId)
+                     INNER JOIN acdEnrollStatus C
+                             ON (C.statusId = A.statusId)
+                INNER JOIN ONLY basphysicalperson D
+                             ON (B.personId = D.personId)
+                          WHERE A.groupId = ?
+                            AND D.personId NOT IN(SELECT personId FROM acdMoodleSubscription WHERE groupId = ?);";
+
+        $args = array($groupId, $groupId);
+        $result = $db->query(SAGU::prepare($sql, $args, false));
+
+        foreach ( (array)$result as $line )
+        {
+            $data = new stdClass();
+            $data->login = $line[0];
+            $data->groupId = $line[1];
+            $data->isteacher = $line[2];
+            $data->processed = $line[3];
+            $data->personId = $line[4];
+			$data->name = $line[5];
+            $data->shortname = $line[6];
+            $data->email = $line[7];
+
+			$this->insertMoodleSubscription($data);
+			$this->insertMoodleUser($data);
+            
+
+        }
+
+        //Insert teacher on table acdmoodlesubscription
+        $sql = "SELECT DISTINCT C.miolousername,
+                                B.groupId,
+                                't' as isteacher,
+                                null as processed,
+                                C.personId,
+								C.name,
+                                C.shortname,
+								C.email
+                           FROM acdScheduleProfessor A
+                     INNER JOIN acdSchedule B
+                             ON (B.scheduleId = A.scheduleId)
+                     INNER JOIN basPhysicalPersonProfessor C
+                             ON (C.personId = A.professorId)
+                          WHERE B.groupId = ?
+                            AND C.personId NOT IN(SELECT personId FROM acdMoodleSubscription WHERE groupId = ?)
+                       ORDER BY C.miolousername ;";
+
+        $args = array($groupId, $groupId);
+        $result = $db->query(SAGU::prepare($sql, $args, false));
+
+        foreach ( (array) $result as $line )
+        {
+            $data = new stdClass();
+            $data->login = $line[0];
+            $data->groupId = $line[1];
+            $data->isteacher = $line[2];
+            $data->processed = $line[3];
+            $data->personId = $line[4];
+			$data->name = $line[5];
+            $data->shortname = $line[6];
+            $data->email = $line[7];
+			
+			$this->insertMoodleSubscription($data);
+			$this->insertMoodleUser($data);
+            
+			
+			
+        }
+    }
+	
+	 /**
+     * Synchronize acdmoodlesubscription data with sagu
+     *
+     * @param $groupId (string): The groupId
+     *
+     * @return (null)
+     **/
+    // public function insertUserMoodle($groupId)
+    // {
+        // $MIOLO = MIOLO::getInstance();
+        // $db = $this->getDatabase();
+		// //Moodle database
+        // $dbMoodle = $this->getDataBase('moodle');
+
+        // //Insert student on table acdmoodlesubscription
+        // $sql = "SELECT DISTINCT D.miolousername,
+                                // A.groupId,
+                                // 'f' as isteacher,
+                                // null as processed,
+                                // D.personId,
+								// D.name,
+                                // D.shortname,
+								// D.email
+                           // FROM acdenroll A
+                     // INNER JOIN acdcontract B
+                             // ON (A.contractId = B.contractId)
+                     // INNER JOIN acdEnrollStatus C
+                             // ON (C.statusId = A.statusId)
+                // INNER JOIN ONLY basphysicalperson D
+                             // ON (B.personId = D.personId)
+                          // WHERE A.groupId = ?
+                            // AND D.personId NOT IN(SELECT personId FROM acdMoodleSubscription WHERE groupId = ?);";
+
+        // $args = array($groupId, $groupId);
+        // $result = $db->query(SAGU::prepare($sql, $args, false));
+
+        // foreach ( (array)$result as $line )
+        // {
+            // $data = new stdClass();
+            // $data->login = $line[0];
+            // $data->groupId = $line[1];
+            // $data->isteacher = $line[2];
+            // $data->processed = $line[3];
+            // $data->personId = $line[4];
+            // $data->name = $line[5];
+            // $data->shortname = $line[6];
+            // $data->email = $line[7];
+			
+			// $usersMoodle = $dbMoodle->query("INSERT INTO mdl_user (auth,firstname,lastname,email,username,confirmed, mnethostid,country,lang,timezone)
+								// VALUES ('db','$data->name','$data->shortname','$data->email','$data->personId',1,1,'CV','pt','Atlantic/Cape_Verde')");
+			// // $usersMoodle = ($usersMoodle[0][0]);
+			// // if ( strlen($usersMoodle) > 0 )
+			// // {
+				// // $sql = "UPDATE acdMoodleSubscription SET processed = (CASE WHEN login IN ({$usersMoodle}) THEN true ELSE false END)";
+				// // $ok = $db->execute($sql);
+			// // }
+		
+            // // $this->insertMoodleSubscription($data);
+
+        // }
+
+       // return $result;
+    // }
+
+    /**
+     * List all records from the table handled by the class
+     *
+     * @param: None
+     *
+     * @returns (array): Return an array with the entire table
+     *
+     **/
+    public function listStudentMoodleSubscription($groupid)
+    {
+        $module = MIOLO::getCurrentModule();
+        $db = $this->getDatabase();
+
+        $sql = "SELECT DISTINCT p.personid,
+                                p.name,
+                                CASE WHEN s.processed = false THEN '" . SAGU::getParameter('academic', 'MOODLE_SUBSCRIPTION_STATUS_REGISTERED') . "' ELSE '" . SAGU::getParameter('academic', 'MOODLE_SUBSCRIPTION_STATUS_NOT_REGISTERED') . "' END,
+
+                                -- Mensagens de status
+                                CASE WHEN s.login IS NULL THEN '" . SAGU::getParameter('academic', 'MOODLE_SUBSCRIPTION_MESSAGE_USER_LOGIN_FAILURE') . " '  ELSE '' END ||
+                                    (CASE WHEN p.cityId IS NULL THEN 'Usuário não possui cidade cadastrada. ' ELSE '' END) ||
+                                    (CASE WHEN p.email IS NULL THEN 'Usuário não possui e-mail cadastrado. ' ELSE '' END) AS statusMessage
+                                   
+                           FROM acdMoodleSubscription s
+                     INNER JOIN acdenroll e
+                             ON (e.groupid = s.groupid)
+                     INNER JOIN acdcontract c --contrato
+                             ON (c.contractid = e.contractid)
+                     INNER JOIN basphysicalpersonstudent p --estudante
+                             ON (s.personid = p.personId)
+                          WHERE s.isteacher IS FALSE
+                            AND s.groupid = ? ";
+
+        $args = array($groupid);
+        $sql .= ' ORDER BY 2;';
+        $result = $db->query(SAGU::prepare($sql, $args));
+
+        //After making a search without logging deletes the users table acdmoodlesubscription
+        $sql = "DELETE FROM acdmoodlesubscription WHERE login IS NULL";
+        $db->execute(SAGU::prepare($sql,null));
+
+        return $result;
+    }
+
+    /**
+     * List all records from the table handled by the class
+     *
+     * @param: None
+     *
+     * @returns (array): Return an array with the entire table
+     *
+     **/
+    public function listTeacherMoodleSubscription($groupid)
+    {
+        $module = MIOLO::getCurrentModule();
+        $db = $this->getDatabase();
+
+        $sql = "SELECT DISTINCT p.personid,
+                                p.name,
+                                CASE WHEN s.processed = false THEN '" . SAGU::getParameter('academic', 'MOODLE_SUBSCRIPTION_STATUS_REGISTERED') . "' ELSE '" . SAGU::getParameter('academic', 'MOODLE_SUBSCRIPTION_STATUS_NOT_REGISTERED') . "' END
+                           FROM acdMoodleSubscription s
+                     INNER JOIN acdSchedule B
+                             ON (B.groupId = s.groupId)
+                     INNER JOIN acdScheduleProfessor A
+                             ON (B.scheduleId = A.scheduleId)
+                     INNER JOIN basphysicalpersonprofessor p --professor
+                             ON (A.professorId = p.personId)
+                          WHERE s.isteacher IS TRUE
+                            AND s.groupid =? ";
+
+        $args = array($groupid);
+        $sql .= ' ORDER BY 2;';
+        $result = $db->query(SAGU::prepare($sql, $args));
+
+        return $result;
+    }
+
+    /**
+     * Seacrh a Moodle Subscription
+     * @param $filters (Object)
+     * @return array
+     */
+    public function searchMoodleSubscription($filters)
+    {
+        $db = $this->getDatabase();
+        $sql = 'SELECT  personId,
+                        groupId,
+                        login,
+                        isteacher,
+                        processed
+                        FROM acdMoodleSubscription';
+
+        if ( strlen($filters->personId) > 0 )
+        {
+            $where .= ' AND personId = ? ';
+            $args[] = $filters->personId;
+        }
+        if ( strlen($filters->groupId) > 0 )
+        {
+            $where .= ' AND groupId = ? ';
+            $args[] = $filters->groupId;
+        }
+        if ( strlen($filters->isteacher) > 0 )
+        {
+            $where .= ' AND isteacher = ? ';
+            $args[] = $filters->isteacher;
+        }
+
+        if ( $where != '' )
+        {
+            $sql .= '    WHERE ' . substr($where, 5);
+
+            $result  = $db->query(SAGU::prepare($sql, $args));
+        }
+
+        return $result;
+    }
+
+    /**
+     * Delete a record
+     * @param $personId (integer): Primary key for deletion
+     * @param $groupId (integer): Primary key for deletion
+     * @return (boolean): True if succeed, otherwise False
+     */
+    public function deleteMoodleSubscription($personId, $groupId)
+    {
+        $sql = 'DELETE FROM acdMoodleSubscription
+                      WHERE personId = ? AND groupId = ?';
+
+        $args[] = $personId;
+        $args[] = $groupId;
+
+        $result = $this->db->execute(SAGU::prepare($sql, $args));
+
+        return $result;
+    }
+
+    /**
+     * Insert a new record
+     *
+     * @param $data (object): An object of the type handled by the class
+     *
+     * @return True if succed, otherwise False
+     *
+     **/
+    public function insertMoodleSubscription($data)
+    {
+        $module = MIOLO::getCurrentModule();
+        $db = $this->getDatabase();
+
+        if ( (strlen($data->personId) > 0) && (strlen($data->groupId) > 0) )
+        {
+			$sql = 'INSERT INTO acdMoodleSubscription(login, groupid, isteacher, processed, personid)
+                       VALUES (?,?,?,?,?)';
+
+            $args = array($data->login, $data->groupId, $data->isteacher, $data->processed, $data->personId);
+			// PRINT_R($data);
+// SAGU::error(SAGU::prepare($sql, $args, false));
+            $result = $db->execute(SAGU::prepare($sql, $args, false));
+			
+			
+        }
+    }
+	
+	/**
+     * Insert a new record
+     *
+     * @param $data (object): An object of the type handled by the class
+     *
+     * @return True if succed, otherwise False
+     *
+     **/
+    public function insertMoodleUser($data)
+    {
+        $ok = true;
+        $db = $this->getDatabase();
+        $dbMoodle = $this->getDataBase('moodle');
+		
+		$usersMoodle = $dbMoodle->query("SELECT username AS names FROM moodle.mdl_user where username = '$data->login'");
+        $usersMoodle = ($usersMoodle[0][0]);
+				
+		// print_r(strlen($data->email));
+		// SAGU::error($usersMoodle);
+                // // {
+					$data->email = strlen($data->email) > 0 ? $data->email : 'moodle.student.unicv.edu.cv';
+					
+					if ( (strlen($data->login) > 0) && (!($usersMoodle)) )
+					{			
+
+		
+						$usersInsertMoodle = $dbMoodle->query("INSERT INTO mdl_user (auth,firstname,lastname,email,username,confirmed, mnethostid,country,lang,timezone)
+										VALUES ('db','$data->name','$data->shortname','$data->email','$data->login',1,1,'CV','pt','Atlantic/Cape_Verde')");
+						$usersInsertMoodle = ($usersInsertMoodle[0][0]);
+					}
+					
+                // }
+				
+        // if ( strlen($usersMoodle) < 0 )
+        // {
+			
+			// $usersInsertMoodle = $dbMoodle->query("INSERT INTO mdl_user (auth,firstname,lastname,email,username,confirmed, mnethostid,country,lang,timezone)
+							// VALUES ('db','$data->name','$data->shortname','$data->email','$data->login',1,1,'CV','pt','Atlantic/Cape_Verde')");
+							
+			// $usersInsertMoodle = ($usersInsertMoodle[0][0]);
+		// }
+        
+        
+        // if ( strlen($usersMoodle) > 0 )
+        // {
+            // $sql = "UPDATE acdMoodleSubscription SET processed = (CASE WHEN login IN ({$usersMoodle}) THEN true ELSE false END)";
+            // $ok = $db->execute($sql);
+        // }
+        
+        return $usersInsertMoodle;
+        
+    }
+
+    /**
+     * Get moodle course fullname
+     *
+     * @param $groupId (integer)
+     *
+     * @return $fullName (string)
+     *
+     **/
+    public function getMoodleCourseFullName($groupId)
+    {
+        $module = MIOLO::getCurrentModule();
+        $db = $this->getDatabase();
+        $courseFullName = null;
+
+        $sql = "SELECT DISTINCT (u.name|| ' - REF' || g.groupid)
+                           FROM acdgroup g
+                     INNER JOIN acdcurriculum r
+                             ON (r.curriculumId = g.curriculumId)
+                     INNER JOIN acdcurricularcomponent u
+                             ON (u.curricularcomponentid = r.curricularcomponentid
+                            AND u.curricularcomponentversion = r.curricularcomponentversion)
+                          WHERE g.groupId = ?";
+
+        $args = array($groupId);
+        $result = $db->query(SAGU::prepare($sql, $args));
+
+        if ( is_array($result) )
+        {
+            list ( $courseFullName ) = $result[0];
+        }
+
+        return $courseFullName;
+    }
+
+    /**
+     * Get moodle assignment
+     *
+     * @param $data (object): An object of the type handled by the class
+     *
+     * @return $data (object)
+     *
+     **/
+    public function getMoodleAssignment($data, $returnList = false)
+    {
+        $courseFullName = $this->getMoodleCourseFullName($data->groupId);
+
+        if ( strlen($courseFullName) > 0 )
+        {
+            //Moodle database
+            $dbMoodle = $this->getDataBase('moodle');
+
+            $sql = "SELECT B.id,
+                           B.name,
+                           B.description
+                      FROM mdl_course A
+                INNER JOIN mdl_assignment B
+                        ON (A.id = B.course)
+                     WHERE fullname = ?";
+
+            $args[] = utf8_encode($courseFullName);
+
+            if ( strlen($data->moodleEvaluationId) > 0 )
+            {
+                $where .= ' AND B.id = ?';
+                $args[] = utf8_encode($data->moodleEvaluationId);
+            }
+            if ( strlen($data->name) > 0 )
+            {
+                $where .= ' AND B.name = ?';
+                $args[] = utf8_encode($data->name);
+            }
+
+            if ( strlen($where) > 0 )
+            {
+                $sql .= ' AND ' . substr($where, 4);
+            }
+
+            $resultMoodleAssignment = $dbMoodle->query(SAGU::prepare($sql, $args, false));
+
+
+            if ( $returnList )
+            {
+                foreach ( $resultMoodleAssignment as $list )
+                {
+                    $resultList[$list[0]] = $list[1];
+                }
+                $resultMoodleAssignment = $resultList;
+            }
+            //return array('1'=>'tarefa moodle');
+
+            return $resultMoodleAssignment;
+        }
+    }
+
+    /**
+     * Get assignment note to student
+     *
+     * @param $data (object): An object of the type handled by the class
+     *
+     * @return $data (object)
+     *
+     **/
+    public function getMoodleAssignmentNoteToStudent($data)
+    {
+        $courseFullName = $this->getMoodleCourseFullName($data->groupId);
+        $return = null;
+
+        if ( strlen($courseFullName) > 0 )
+        {
+            //Moodle database
+            $dbMoodle = $this->getDataBase('moodle');
+
+            $sql = " SELECT a.rawgrade
+                       FROM mdl_grade_grades A
+                 INNER JOIN mdl_grade_items B
+                         ON (B.itemmodule = 'assignment'
+                        AND B.id = A.itemId)
+                 INNER JOIN mdl_course C
+                         ON (B.courseid = C.id)
+                 INNER JOIN mdl_user D
+                         ON (D.id = A.userId)
+                      WHERE C.fullname = ?
+                        AND B.iteminstance = ?
+                        AND D.userName = ?";
+
+            $args = array(utf8_encode($courseFullName), utf8_encode($data->moodleEvaluationId), utf8_encode($data->userName));
+
+            $note = $dbMoodle->query(SAGU::prepare($sql, $args, false));
+
+            if ( is_array($note) )
+            {
+                $return = (is_numeric($note[0][0])? round($note[0][0],2): $note);
+            }
+
+            return $return;
+        }
+    }
+	
+	/**
+     * Return a specific record from the database
+     *
+     * @param $iduser (integer): Primary key of the record to be retrieved
+     * @return (object): Return an object of the type handled by the class
+     */
+    public function getMoodleCourseByGroup($groupId)
+    {
+        $MIOLO = MIOLO::getInstance();
+        $db = $this->getDatabase();
+		
+        $sql = 'SELECT u.name,
+                       g.objectives,
+                       g.content,
+                       g.methodology,
+                       g.evaluation,
+                       g.observation,
+                       g.complement,
+                       g.bibliographyDescription,
+					   u.shortname,
+					   F.coursemoodleid,
+					   getcoursename(r.courseid) as curso
+                  FROM acdgroup g
+            INNER JOIN acdcurriculum r
+                    ON (r.curriculumId = g.curriculumId)
+            INNER JOIN acdcurricularcomponent u
+                    ON (u.curricularcomponentid = r.curricularcomponentid
+                   AND u.curricularcomponentversion = r.curricularcomponentversion)
+			LEFT JOIN acdcoursemoodle f
+					ON(f.courseid = r.courseid)
+                 WHERE g.groupId = ? ';
+
+        $params = array($groupId);
+        $result = $db->query(SAGU::prepare($sql, $params, false));
+
+        list ( $data->name,
+               $data->objectives,
+               $data->content,
+               $data->methodology,
+               $data->evaluation,
+               $data->observation,
+               $data->complement,
+               $data->bibliographyDescription,
+               $data->shortname,
+               $data->coursemoodleid,
+               $data->curso ) = $result[0];
+
+        return $data;
+    }
+
+    /**
+     * Update data from a specific record
+     *
+     * @param $data (object): Data which will replace the old record data
+     *
+     * @return (boolean): True if succeed, otherwise False
+     *
+     **/
+    public function updateMoodleSubscription($data)
+    {
+        $module = MIOLO::getCurrentModule();
+        $db = $this->getDatabase();
+        $dbMoodle = $this->getDatabase('moodle');
+        
+        $sql = "UPDATE acdMoodleSubscription
+                   SET processed = ?
+                 WHERE groupId = ?
+                   AND login IS NOT NULL";
+        
+        $args = array($data->processed, $data->groupId);
+        $result = $db->execute(SAGU::prepare($sql, $args));
+
+        return $result;
+    }
+
+    /**
+     * Insert data a specific record
+     *
+     * @param $data (object): Data which will replace the old record data
+     *
+     **/
+    public function insertDetailsOfTheDiscipline($groupId)
+    {
+        //Miolo instance
+        $MIOLO = MIOLO::getInstance();
+        $module = MIOLO::getCurrentModule();
+
+        //Sagu database
+        $db = $this->getDatabase();
+		
+
+        //Get the full name of the discipline
+        $sql = "SELECT u.name,
+                       g.objectives,
+                       g.content,
+                       g.methodology,
+                       g.evaluation,
+                       g.observation,
+                       g.complement,
+                       g.bibliographyDescription,
+					   u.shortname,
+					   F.coursemoodleid
+                  FROM acdgroup g
+            INNER JOIN acdcurriculum r
+                    ON (r.curriculumId = g.curriculumId)
+            INNER JOIN acdcurricularcomponent u
+                    ON (u.curricularcomponentid = r.curricularcomponentid
+                   AND u.curricularcomponentversion = r.curricularcomponentversion)
+			LEFT JOIN acdcoursemoodle f
+					ON(f.courseid = r.courseid and f.unitid = r.unitid)
+                 WHERE g.groupId = ?";
+				
+
+        $args = array($groupId);
+		
+		$result = $db->query(SAGU::prepare($sql, $args));
+
+        if ( is_array($result) )
+        {
+			
+            list ( $fullname, 
+				   $objectives, 
+				   $content, 
+				   $methodology, 
+				   $evaluation, 
+				   $observation, 
+				   $complement, 
+				   $bibliographyDescription, 
+				   $shortname, 
+				   $coursemoodleid ) = $result[0];
+
+            //Moodle database
+            $dbMoodle = $this->getDataBase('moodle');
+			
+			$username = "moodle_user";
+			$password = "AxA05Mmyq72dxX";
+			try {
+				  $conn = new PDO('mysql:host=172.16.80.243;port=3306;dbname=moodle', $username, $password);
+				  
+				  $stmt = $conn->prepare('SELECT A.id,
+							   C.id
+						  FROM mdl_course A
+					INNER JOIN mdl_course_sections C
+							ON (A.id = C.course
+						   AND C.section = 0 )
+						 WHERE fullname = :fullname and A.category = :category');
+				  $stmt->execute(array('fullname' => $fullname, 'category'=> $coursemoodleid));
+				  $resultMoodleCourseId = $stmt->fetchAll();
+				  
+				  
+				 
+			
+				if ( count($resultMoodleCourseId) > 0)
+				{
+						 list ( $moodleCourseId, $sectionId ) = $resultMoodleCourseId[0];
+
+					//Set summary in course section
+					$sql = 'UPDATE mdl_course_sections
+							   SET course = ?,
+								   summary = ?
+							 WHERE id = ?';
+
+					$args = array($moodleCourseId, $summary, $sectionId);
+
+					$instructionSql = SAGU::prepare($sql, $args, false);
+
+					$resultInsertSection = $dbMoodle->execute($instructionSql[0]);
+					
+					$sql3 = 'SELECT A.id
+								  FROM mdl_enrol A
+								 WHERE courseid = ?';
+						  
+						  $args3 = array($moodleCourseId);
+						  $enrolid = $dbMoodle->query(SAGU::prepare($sql3, $args3, false));
+						  $enrolid = $enrolid[0][0];
+						  
+					
+						//Insert student on table acdmoodlesubscription
+						$sqlstudent = "SELECT DISTINCT D.personId								
+										   FROM acdenroll A
+									 INNER JOIN acdcontract B
+											 ON (A.contractId = B.contractId)
+									 INNER JOIN acdEnrollStatus C
+											 ON (C.statusId = A.statusId)
+								INNER JOIN ONLY basphysicalperson D
+											 ON (B.personId = D.personId)
+										  WHERE A.groupId = ?";
+
+						$args = array($groupId);
+						$resultstudent = $db->query(SAGU::prepare($sqlstudent, $args, false));
+
+						foreach ( (array)$resultstudent as $line )
+						{
+							$data = new stdClass();
+							$data->personId = $line[0];
+							
+							$sql = 'SELECT A.id
+								  FROM mdl_user A
+								 WHERE username = ?';
+						  
+						  $args = array($data->personId);
+						  $userid = $dbMoodle->query(SAGU::prepare($sql, $args, false));
+						  $userid = $userid[0][0];
+						    
+						  $sql2 = 'SELECT A.userid
+								  FROM mdl_user_enrolments A
+								 WHERE enrolid = ? and userid = ?';
+						  
+						  $args2 = array($enrolid, $userid);
+						  $useridnull = $dbMoodle->query(SAGU::prepare($sql2, $args2, false));
+						  $useridnull = $useridnull[0][0];
+						  
+						  // print_r($useridnull);
+						  // SAGU::error($enrolid);
+						 						  
+						   if(!strlen($useridnull) && count($userid) > 0)
+						  {
+							 $mdluserenrolments = $dbMoodle->query("INSERT INTO mdl_user_enrolments (status,enrolid,userid,timestart,timeend,timecreated,timemodified) 
+												VALUES (0,$enrolid,$userid,0,0,0,0)");							
+						  }
+
+						  $sql4 = 'SELECT id FROM mdl_context where instanceid = ? and contextlevel = 50';
+								
+						  $args = array($moodleCourseId);
+						  $contextid = $dbMoodle->query(SAGU::prepare($sql4, $args, false));
+						  $contextid = $contextid[0][0];
+						  
+						  $sql3 = 'SELECT A.userid
+								  FROM mdl_role_assignments A
+								 WHERE contextid = ? and userid = ?';
+						  
+						  $args3 = array($contextid, $userid);
+						  $userdnull = $dbMoodle->query(SAGU::prepare($sql3, $args3, false));
+						  $userdnull = $userdnull[0][0];
+						  
+						 if(!strlen($userdnull) && count($userid) > 0)
+						 {  
+							  $sql = $dbMoodle->query("INSERT INTO mdl_role_assignments (roleid,contextid,userid,timemodified) VALUES (5,$contextid,$userid,0)");
+														  			
+						 }						  
+												
+							
+						}
+
+						//Insert teacher on table acdmoodlesubscription
+						$sqlteacher = "SELECT DISTINCT C.miolousername										
+										   FROM acdScheduleProfessor A
+									 INNER JOIN acdSchedule B
+											 ON (B.scheduleId = A.scheduleId)
+									 INNER JOIN basPhysicalPersonProfessor C
+											 ON (C.personId = A.professorId)
+										  WHERE B.groupId = ?";
+
+							$args = array($groupId);
+							$resultteacher = $db->query(SAGU::prepare($sqlteacher, $args, false));
+
+							foreach ( (array) $resultteacher as $line )
+							{
+								$data->personId = $line[0];
+								
+								$sql = 'SELECT A.id
+								  FROM mdl_user A
+								 WHERE username = ?';
+								  
+								  $args = array($data->personId);
+								  $userid = $dbMoodle->query(SAGU::prepare($sql, $args, false));
+								  $userid = $userid[0][0];
+								  
+								  $sql2 = 'SELECT A.userid
+										  FROM mdl_user_enrolments A
+										 WHERE enrolid = ? and userid = ?';
+								  
+								  $args2 = array($enrolid, $userid);
+								  $useridnull = $dbMoodle->query(SAGU::prepare($sql2, $args2, false));
+								  $useridnull = $useridnull[0][0];
+								  
+								 if(!strlen($useridnull) && count($userid) > 0)
+								  {												
+										$mdluserenrolments = $dbMoodle->query("INSERT INTO mdl_user_enrolments (status,enrolid,userid,timestart,timeend,timecreated,timemodified) 
+														VALUES (0,$enrolid,$userid,0,0,0,0)");
+										
+										// $contextid = SELECT * FROM mdl_context where instanceid = $moodleCourseId and contextlevel = 50;
+										
+										// $contextenroll = SELECT * FROM mdl_role_assignments where contextid in ($contextid);
+														
+								  }	
+									
+								  $sql4 = 'SELECT id FROM mdl_context where instanceid = ? and contextlevel = 50';
+										
+								  $args = array($moodleCourseId);
+								  $contextid = $dbMoodle->query(SAGU::prepare($sql4, $args, false));
+								  $contextid = $contextid[0][0];
+								  
+								  $sql3 = 'SELECT A.userid
+										  FROM mdl_role_assignments A
+										 WHERE contextid = ? and userid = ?';
+								  
+								  $args3 = array($contextid, $userid);
+								  $userdnull = $dbMoodle->query(SAGU::prepare($sql3, $args3, false));
+								  $userdnull = $userdnull[0][0];
+								  
+								 if(!strlen($userdnull) && count($userid) > 0)
+								 {  
+									  $sql = $dbMoodle->query("INSERT INTO mdl_role_assignments (roleid,contextid,userid,timemodified) VALUES (3,$contextid,$userid,0)");
+																			
+								 }
+													
+							}
+					
+					
+				}
+				else {
+				
+					// Inserir Disciplinas
+					$dbMoodle = $this->getDataBase('moodle');
+					$usersMoodle = $dbMoodle->query("INSERT INTO mdl_course (category,fullname,shortname) VALUES ($coursemoodleid,'$fullname','$shortname') ");
+				
+					$sql = 'SELECT A.id
+						  FROM mdl_course A
+						 WHERE fullname = ? and category = ?';
+				  
+				  $args = array($fullname, $coursemoodleid);
+				  $courseid = $dbMoodle->query(SAGU::prepare($sql, $args, false));
+				  $courseid = $courseid[0][0];
+				  
+					// Criar Section
+					for ($i=0; $i <6 ; $i++)
+					{ 
+						$courseSectionsMoodle = $dbMoodle->query("INSERT INTO mdl_course_sections (course,section) VALUES ($courseid,$i) ");
+					}
+				
+					// Permitir Inscrição dos Estudantes
+					if(count($courseid)>0)
+					{					
+					 
+						$inscricaoDisciplina = $dbMoodle->query("INSERT INTO mdl_enrol (enrol, status, courseid) VALUES ('manual', 0, $courseid ) ");
+						
+							
+						$sql = 'SELECT A.id
+								  FROM mdl_enrol A
+								 WHERE courseid = ?';
+						  
+						  $args = array($courseid);
+						  $enrolid = $dbMoodle->query(SAGU::prepare($sql, $args, false));
+						  $enrolid = $enrolid[0][0];
+						  
+						  
+						//Insert student on table acdmoodlesubscription
+						$sqlstudent = "SELECT DISTINCT D.personId								
+										   FROM acdenroll A
+									 INNER JOIN acdcontract B
+											 ON (A.contractId = B.contractId)
+									 INNER JOIN acdEnrollStatus C
+											 ON (C.statusId = A.statusId)
+								INNER JOIN ONLY basphysicalperson D
+											 ON (B.personId = D.personId)
+										  WHERE A.groupId = ?";
+
+						$args = array($groupId);
+						$resultstudent = $db->query(SAGU::prepare($sqlstudent, $args, false));
+
+						foreach ( (array)$resultstudent as $line )
+						{
+							$data = new stdClass();
+							$data->personId = $line[0];
+							
+							$sql = 'SELECT A.id
+								  FROM mdl_user A
+								 WHERE username = ?';
+						  
+						  $args = array($data->personId);
+						  $userid = $dbMoodle->query(SAGU::prepare($sql, $args, false));
+						  $userid = $userid[0][0];
+							
+						  $mdluserenrolments = $dbMoodle->query("INSERT INTO mdl_user_enrolments (status,enrolid,userid,timestart,timeend,timecreated,timemodified) 
+												VALUES (0,$enrolid,$userid,0,0,0,0)");
+							
+						  // $sql4 = 'SELECT id FROM mdl_context where instanceid = ? and contextlevel = 50';
+									
+						  // $args4 = array($courseid);
+						  // $contextid = $dbMoodle->query(SAGU::prepare($sql4, $args4, false));
+						  // $contextid = $contextid[0][0];
+						  
+						  // $sql3 = 'SELECT A.userid
+								  // FROM mdl_role_assignments A
+								 // WHERE contextid = ? and userid = ?';
+						  
+						  // $args3 = array($contextid, $userid);
+						  // $userdnull = $dbMoodle->query(SAGU::prepare($sql3, $args3, false));
+						  						  
+					
+						  // $sql = $dbMoodle->query("INSERT INTO mdl_role_assignments (roleid,contextid,userid,timemodified) VALUES (5,$contextid,$userid,0)");
+						
+						}
+
+						//Insert teacher on table acdmoodlesubscription
+						$sqlteacher = "SELECT DISTINCT C.miolousername										
+										   FROM acdScheduleProfessor A
+									 INNER JOIN acdSchedule B
+											 ON (B.scheduleId = A.scheduleId)
+									 INNER JOIN basPhysicalPersonProfessor C
+											 ON (C.personId = A.professorId)
+										  WHERE B.groupId = ?";
+
+						$args = array($groupId);
+						$resultteacher = $db->query(SAGU::prepare($sqlteacher, $args, false));
+
+						foreach ( (array) $resultteacher as $line )
+						{
+							$data->personId = $line[0];
+							
+							$sql = 'SELECT A.id
+							  FROM mdl_user A
+							 WHERE username = ?';
+							  
+							  $args = array($data->personId);
+							  $userid = $dbMoodle->query(SAGU::prepare($sql, $args, false));
+							  $userid = $userid[0][0];
+							
+							$mdluserenrolments = $dbMoodle->query("INSERT INTO mdl_user_enrolments (status,enrolid,userid,timestart,timeend,timecreated,timemodified) 
+												VALUES (0,$enrolid,$userid,0,0,0,0)");
+												
+												// $mdluserrole = $dbMoodle->query("INSERT INTO mdl_role_assignments (3,contextid,$userid,timemodified)
+							// VALUES (5,$context_id,$user_id,0");
+							
+						  // $sql4 = 'SELECT id FROM mdl_context where instanceid = ? and contextlevel = 50';
+							
+						  // $args4 = array($courseid);
+						  // $contextid = $dbMoodle->query(SAGU::prepare($sql4, $args4, false));
+						  // $contextid = $contextid[0][0];
+						  
+						  // $sql3 = 'SELECT A.userid
+								  // FROM mdl_role_assignments A
+								 // WHERE contextid = ? and userid = ?';
+						  
+						  // $args3 = array($contextid, $userid);
+						  // $userdnull = $dbMoodle->query(SAGU::prepare($sql3, $args3, false));
+						
+						  // $sql = $dbMoodle->query("INSERT INTO mdl_role_assignments (roleid,contextid,userid,timemodified) VALUES (3,$contextid,$userid,0)");
+																
+					 
+																											
+						}
+					}
+					
+					
+				
+				}
+					} catch(PDOException $e) {
+					echo 'ERROR: ' . $e->getMessage();
+				} 
+        }
+		
+		return $result;
+    }
+
+    /**
+     * Make integration with moodle
+     *
+     * @param $groupId (string): id group
+     *
+     * @return (boolean): True if succeed, otherwise False
+     *
+     **/
+    public function makeIntegrationWithMoodle($groupId)
+    {
+        $MIOLO = MIOLO::getInstance();
+        $module = MIOLO::getCurrentModule();
+        $db = $this->getDatabase();
+        // $usingLDAP = strtolower($MIOLO->getConf('login.class')) == 'mauthldap';
+
+        // SDatabase::execute("UPDATE acdMoodleSubscription SET processed = false WHERE groupId = ?", array($groupId));
+        
+        // // Isto e necessario pois o script do moodle nao insere usuarios com sucesso quando auth != db
+        // if ( $usingLDAP )
+        // {
+			
+            // $dbMoodle = $this->getDataBase('moodle');
+            // $dbMoodle->execute("UPDATE mdl_user SET auth='db' WHERE auth='ldap'");
+        // }
+        
+        // $result = false;
+        // //Performs integration script users        
+        // if( (int) SAGU::getParameter('BASIC', 'MOODLE_VERSION') > (int) '1.9.9' )
+        // {
+            // //Aplica o script de sincronização de usuários da versão 2.X
+            // $commandInsertUser = "php " . SAGU::getParameter('academic', 'MOODLE_DIRECTORY') . "/auth/db/cli/sync_users.php";
+			
+        // }
+        // else
+        // {
+            // //Aplica o script de sincronização de usuários da versão 1.9.X
+            // $commandInsertUser = "php " . SAGU::getParameter('academic', 'MOODLE_DIRECTORY') . "/auth/db/auth_db_sync_users.php";
+            
+        // }
+        // exec($commandInsertUser, $var, $resultUser);
+
+        // // Caso esteja utilizando LDAP, força verificacao de login do moodle para este tipo de autenticacao
+        // if ( $usingLDAP )
+        // {
+            // $dbMoodle = $this->getDataBase('moodle');
+            // $dbMoodle->execute("UPDATE mdl_user SET auth='ldap' WHERE auth='db'");
+        // }
+        
+		
+		if(1==1)
+		{
+			
+		
+		 // SAGU::error($courseFullName);
+		
+        // if ( $resultUser == 0 )
+        // {
+            // //Performs integration script subscripton
+            
+            // if( (int) SAGU::getParameter('BASIC', 'MOODLE_VERSION') > (int) '1.9.9' )
+            // {
+                // //Aplica o script de sincronização de usuários da versão 2.X
+                // $commandInsertSubscription = "php " . SAGU::getParameter('academic', 'MOODLE_DIRECTORY') . "/enrol/database/cli/sync.php";
+            // }
+            // else
+            // {
+                // //Aplica o script de sincronização de usuários da versão 1.9.X
+                // $commandInsertSubscription = "php " . SAGU::getParameter('academic', 'MOODLE_DIRECTORY') . "/enrol/database/enrol_database_sync.php";
+
+            // }
+            // exec($commandInsertSubscription, $var, $resultSubscription);
+
+           
+                //Insert Details of the discipline
+				
+              $result = $this->insertDetailsOfTheDiscipline($groupId);
+        }
+        
+		if($result)
+		{
+			$this->updateProcessedStatus($groupId);
+		}        
+        
+        return $result;
+    }
+    
+    
+    /**
+     * Define como processed = TRUE para todos alunos que estao presentes na tabela de usuarios do moodle
+     * 
+     * @return boolean Status
+     */
+    public function updateProcessedStatus($groupId)
+    {
+        $ok = false;
+        $db = $this->getDatabase();
+        $dbMoodle = $this->getDataBase('moodle');
+        
+        $usersMoodle = $dbMoodle->query("SELECT GROUP_CONCAT(username) AS names FROM mdl_user");
+        $usersMoodle = ($usersMoodle[0][0]);
+        if ( strlen($usersMoodle) > 0 )
+        {
+            // $sql = "UPDATE acdMoodleSubscription SET processed = (CASE WHEN login IN ({$usersMoodle}) THEN true ELSE false END)";
+            $sql = "UPDATE acdMoodleSubscription SET processed = (CASE WHEN groupId = $groupId THEN true ELSE false END)";
+            $ok = $db->execute($sql);
+        }
+        
+        return $ok;
+    }
+}
+?>

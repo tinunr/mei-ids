@@ -8,7 +8,7 @@ public class HealthCheckRoute extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
-        from("timer:health?period=5000")
+        from("timer:health?period=9000")
                 .routeId("health-check-route")
                 .log("[HealthCheckRoute] application is alive at ${date:now:yyyy-MM-dd HH:mm:ss}")
                 .end();
