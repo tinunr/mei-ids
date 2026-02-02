@@ -181,7 +181,68 @@ Payload (exemplo):
 
 ### 6.3 Operação e Observabilidade
 
-RabbitMQ UI para filas e taxas; logs do orquestrador para rastreabilidade; phpMyAdmin para inspeção de BD em ambiente de teste.
+A arquitetura escolhida foi concebida com foco estratégico na observabilidade futura, permitindo escalabilidade operacional e visibilidade completa dos fluxos de integração. Esta abordagem é um dos pilares fundamentais da solução.
+
+**Observabilidade Atual (Implementada):**
+
+- **RabbitMQ Management UI** (`http://localhost:15672`): fornece visibilidade em tempo real sobre:
+  - Taxa de mensagens (ingresso/egresso por fila)
+  - Comprimento de filas e latência de processamento
+  - Retenção de mensagens e estado de conexões
+  - Análise rápida de gargalos ou acumulação de mensagens
+
+- **Logs Estruturados do Orquestrador (Camel)**: 
+  - Cada rota Camel regista eventos-chave (processamento, validação, erros)
+  - Rastreabilidade de transações desde entrada em fila até resultado em serviço alvo
+  - Identificação de falhas e análise de impacto
+
+- **phpMyAdmin**: acesso rápido à base de dados MySQL para inspeção de estado do Moodle em ambiente de teste.
+
+**Observabilidade Futura (Extensível):**
+
+A arquitetura foi projetada como base sólida para implementar:
+
+1. **Distributed Tracing (OpenTelemetry/Jaeger)**:
+   - Correlação de mensagens através de `trace-id` e `span-id` propagados em headers RabbitMQ
+   - Visibilidade de latência em cada componente (broker → orquestrador → Moodle)
+   - Identificação de caminhos críticos e otimização
+
+2. **Métricas Detalhadas (Prometheus/Micrometer)**:
+   - Métricas nativas do RabbitMQ (throughput, latência de ACK, rejeições)
+   - Métricas do orquestrador (rotas Camel, processadores, serviços REST)
+   - Alertas automáticos em caso de degeneração de desempenho
+
+3. **Centralização de Logs (ELK Stack/Loki)**:
+   - Agregação de logs de todos os componentes (RabbitMQ, Orquestrador, Moodle)
+   - Pesquisa e análise histórica de incidentes
+   - Dashboards customizáveis para diferentes stakeholders
+
+4. **Dead-Letter Queues (DLQ) com Observação**:
+   - Mensagens que falham são automaticamente encaminhadas para DLQ
+   - Monitorização de taxa de falhas e alertas proativos
+   - Replay controlado após correção de problemas
+
+5. **Circuit Breakers e Health Checks**:
+   - Monitorização da saúde de integração com Moodle (REST availability)
+   - Padrão de circuit breaker (Hystrix/Resilience4j) integrado em Camel
+   - Estado visível em dashboards de operação
+
+**Razões Arquiteturais para Esta Abordagem:**
+
+- **Desacoplamento + Observabilidade**: RabbitMQ separa produtores de consumidores, permitindo adicionar observadores (monitorização) sem alterar lógica de negócio
+- **Rastreabilidade Assíncrona**: cada mensagem pode ser correlacionada através de IDs únicos, essencial para sistemas distribuídos
+- **Escalabilidade Operacional**: à medida que novos módulos são integrados (notificações, ERPs), a infraestrutura de observação cresce proporcionalmente
+- **Conformidade e Auditoria**: registro completo de transformações de dados em fluxos académicos
+
+**Exemplo de Evolução:**
+
+```
+Hoje:                        Futuro:
+Logs locais            →      ELK Stack
+RabbitMQ UI            →      Prometheus + Grafana
+Manual troubleshooting →      Jaeger + Distributed Tracing
+                              + Alertas automáticos
+```
 
 ---
 
