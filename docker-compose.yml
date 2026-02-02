@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile
+    image: rabbitmq-local:latest
+    container_name: rabbitmqids
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - mei-ids-network
+
+volumes:
+  rabbitmq_data:
+    name: mei_ids_rabbitmq_data
+
+networks:
+  mei-ids-network:
+    name: mei-ids-network
