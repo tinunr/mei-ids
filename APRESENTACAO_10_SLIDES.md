@@ -1,5 +1,4 @@
 # MEI-IDS — Apresentação do Projeto
-
 ## 10 Slides para PowerPoint
 
 ---
@@ -11,13 +10,11 @@
 **Unidade Curricular:** Integração de Sistemas (Mestrado)
 
 **Objetivo Principal:**
-
 - Orquestrar fluxos entre módulo académico (SII), LMS Moodle e sistema de notificações
 - Implementar padrões de integração (EIP) em cenários reais
 - Arquitetura extensível, resiliente e observável
 
 **Tecnologias Chave:**
-
 - RabbitMQ (Message Broker)
 - Spring Boot + Apache Camel (Orquestrador)
 - Moodle (LMS)
@@ -30,13 +27,11 @@
 **Cenário Inicial:**
 
 ❌ **Integração Ponto-a-Ponto (Point-to-Point)**
-
 - Alto acoplamento entre sistemas
 - Difícil manutenção e escalabilidade
 - Sem garantias de entrega
 
 ❌ **Desafios Académicos:**
-
 - Sincronização manual de cursos e matrículas
 - Inconsistência entre SII e Moodle
 - Sem rastreabilidade de operações
@@ -68,7 +63,6 @@
 ```
 
 **Componentes Principais:**
-
 1. RabbitMQ (Message Broker)
 2. Spring Boot + Apache Camel (Orquestrador)
 3. Moodle + MySQL (LMS)
@@ -108,7 +102,7 @@ direct:createCourse
   ↓ MoodleService.createCourse()
   ↓ REST → Moodle API
   ↓ Marshal JSON + retorno
-```
+```CC
 
 **Rota 2: Sincronização de Turma**
 
@@ -117,7 +111,7 @@ direct:syncCourse
   ↓ Unmarshal JSON
   ↓ Validar CourseSyncRequest
   ↓ Criar usuários (se não existem)
-  ↓ Inscrever estudantes (role=5)
+  ↓ Inscrever estudantes (role=5)C
   ↓ Inscrever professores (role=3)
   ↓ Atualizar seções do curso
   ↓ Marshal JSON + resumo de operações
@@ -131,17 +125,16 @@ direct:syncCourse
 
 **Métodos Principais:**
 
-| Método                           | Descrição                                         |
-| -------------------------------- | ------------------------------------------------- | --- |
-| `createCourse()`                 | Cria curso no Moodle                              | C   |
-| `createUser()`                   | Cria utilizador (role db)                         |
-| `enrollUser()`                   | Inscreve em curso (role 5=estudante, 3=professor) |
-| `getCourseByName()`              | Busca curso por nome                              |
-| `updateCourseSection()`          | Atualiza seções com conteúdo                      |
-| `synchronizeCourseEnrollments()` | Orquestra matrículas em massa                     |
+| Método | Descrição |
+|--------|-----------|
+| `createCourse()` | Cria curso no Moodle |
+| `createUser()` | Cria utilizador (role db) |
+| `enrollUser()` | Inscreve em curso (role 5=estudante, 3=professor) |
+| `getCourseByName()` | Busca curso por nome |
+| `updateCourseSection()` | Atualiza seções com conteúdo |
+| `synchronizeCourseEnrollments()` | Orquestra matrículas em massa |
 
 **Características:**
-
 - HttpClient: RestTemplate (Spring)
 - Autenticação: Moodle token (config externe)
 - Respostas: JSON estruturado com logs SLF4J
@@ -152,12 +145,12 @@ direct:syncCourse
 
 **Serviços Containerizados:**
 
-| Serviço        | Porta | Função                         |
-| -------------- | ----- | ------------------------------ |
-| **RabbitMQ**   | 15672 | Message Broker + Management UI |
-| **Moodle**     | 80    | LMS (Apache/PHP)               |
-| **MySQL**      | 3306  | Base de dados Moodle           |
-| **phpMyAdmin** | 8081  | UI para gestão de BD           |
+| Serviço | Porta | Função |
+|---------|-------|--------|
+| **RabbitMQ** | 15672 | Message Broker + Management UI |
+| **Moodle** | 80 | LMS (Apache/PHP) |
+| **MySQL** | 3306 | Base de dados Moodle |
+| **phpMyAdmin** | 8081 | UI para gestão de BD |
 
 **Inicialização:**
 
@@ -173,7 +166,6 @@ docker compose logs -f moodleapp
 ```
 
 **Credenciais Teste:**
-
 - RabbitMQ: admin/admin
 - MySQL: moodleuser/moodlepass
 - Moodle: admin/admin (criar após inicialização)
@@ -185,47 +177,39 @@ docker compose logs -f moodleapp
 **Observabilidade ATUAL (Implementada):**
 
 ✅ **RabbitMQ Management UI** (`http://localhost:15672`)
-
-- Taxa de mensagens (ingresso/egresso)
-- Comprimento de filas
-- Análise de gargalos
+  - Taxa de mensagens (ingresso/egresso)
+  - Comprimento de filas
+  - Análise de gargalos
 
 ✅ **Logs Estruturados (SLF4J)**
-
-- Rastreabilidade desde fila até Moodle
-- Eventos-chave: validação, processamento, erros
+  - Rastreabilidade desde fila até Moodle
+  - Eventos-chave: validação, processamento, erros
 
 ✅ **phpMyAdmin**
-
-- Inspeção de BD Moodle
+  - Inspeção de BD Moodle
 
 **Observabilidade FUTURA (Extensível):**
 
 🔮 **Distributed Tracing** (OpenTelemetry/Jaeger)
-
-- Correlação com trace-id/span-id
+  - Correlação com trace-id/span-id
 
 🔮 **Métricas Detalhadas** (Prometheus/Micrometer)
-
-- Throughput, latência, alertas
+  - Throughput, latência, alertas
 
 🔮 **Centralização de Logs** (ELK Stack/Loki)
-
-- Agregação e dashboards
+  - Agregação e dashboards
 
 🔮 **Dead-Letter Queues (DLQ)**
-
-- Reentrega e replay de falhas
+  - Reentrega e replay de falhas
 
 🔮 **Circuit Breakers**
-
-- Resiliência com Hystrix/Resilience4j
+  - Resiliência com Hystrix/Resilience4j
 
 ---
 
 ## SLIDE 9: Casos de Estudo — Fluxos em Ação
 
-Caso 1: Criação de Curso
+**Caso 1: Criação de Curso**
 
 1. SII publica JSON em `moodle.create.course.queue`
 2. Consumer consome → `direct:createCourse`
@@ -233,7 +217,7 @@ Caso 1: Criação de Curso
 4. REST → Moodle API
 5. ✓ Curso criado com ID retornado
 
-Caso 2: Sincronização de Turma
+**Caso 2: Sincronização de Turma**
 
 1. SII publica JSON em `moodle.sync.course.queue`
 2. Consumer consome → `direct:syncCourse`
@@ -241,7 +225,7 @@ Caso 2: Sincronização de Turma
 4. Inscrever com roles corretos
 5. ✓ Turma sincronizada, log de sucesso/falha
 
-Caso 3: Teste via REST AP
+**Caso 3: Teste via REST API**
 
 - `GET /api/example/test` → Envia "Ola estou aqui" para RabbitMQ
 - Fluxo completo: REST → Producer → RabbitMQ → Consumer → Camel Route → Log
@@ -277,4 +261,4 @@ Caso 3: Teste via REST AP
 
 **Conclusão Final:**
 
-_"Uma solução EAI resiliente, extensível e pronta para escalar com novos domínios de negócio."_
+*"Uma solução EAI resiliente, extensível e pronta para escalar com novos domínios de negócio."*
