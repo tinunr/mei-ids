@@ -22,5 +22,6 @@ Legacy and archived documents:
 - Full report (archived): [docs/legacy/relatorio-final.md](docs/legacy/relatorio-final.md)
 - Report copy: [docs/legacy/relatorio-final-copy.md](docs/legacy/relatorio-final-copy.md)
 - Report copy 2: [docs/legacy/relatorio-final-copy-2.md](docs/legacy/relatorio-final-copy-2.md)
+- Notification starter README: [docs/legacy/notification-readme.md](docs/legacy/notification-readme.md)
 - Notes: [docs/legacy/demo.text](docs/legacy/demo.text)
 - Empty slide stub: [docs/legacy/slade.md](docs/legacy/slade.md)

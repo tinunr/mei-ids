@@ -58,26 +58,26 @@ Aguarde até ver:
 
 ```bash
 # Teste com mensagem padrão
-curl -X POST http://localhost:7070/api/example/test
+curl -X POST http://localhost:7073/api/example/test
 
 # Ou com mensagem customizada
-curl -X POST "http://localhost:7070/api/example/send-message?message=Ola%20estou%20aqui%20-%20Customizado"
+curl -X POST "http://localhost:7073/api/example/send-message?message=Ola%20estou%20aqui%20-%20Customizado"
 ```
 
 **Opção B: PowerShell**
 
 ```powershell
 # Teste com mensagem padrão
-Invoke-RestMethod -Uri "http://localhost:7070/api/example/test" -Method Post
+Invoke-RestMethod -Uri "http://localhost:7073/api/example/test" -Method Post
 
 # Com mensagem customizada
-Invoke-RestMethod -Uri "http://localhost:7070/api/example/send-message?message=Ola%20estou%20aqui" -Method Post
+Invoke-RestMethod -Uri "http://localhost:7073/api/example/send-message?message=Ola%20estou%20aqui" -Method Post
 ```
 
 **Opção C: Postman**
 
 1. Criar uma nova requisição **POST**
-2. URL: `http://localhost:7070/api/example/test`
+2. URL: `http://localhost:7073/api/example/test`
 3. Clique em **Send**
 
 ### 3. Verifique o Log
@@ -143,7 +143,7 @@ Verifique no RabbitMQ Management Console: `http://localhost:15672`
 Envie qualquer mensagem customizada:
 
 ```bash
-curl -X POST "http://localhost:7070/api/example/send-message?message=Teste%20123"
+curl -X POST "http://localhost:7073/api/example/send-message?message=Teste%20123"
 ```
 
 ## 🚀 Próximos Passos
