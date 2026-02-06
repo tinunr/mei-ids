@@ -29,37 +29,10 @@ public class MoodleCourseRoute extends RouteBuilder {
                 .maximumRedeliveries(0);
 
         // Route to create a course in Moodle
-        from("direct:createCourse")
-                .routeId("moodle-create-course-route")
-                .log("[MoodleCourseRoute] Received request: ${body}")
-                .unmarshal().json(JsonLibrary.Jackson, CourseRequest.class)
-                .process(exchange -> {
-                    CourseRequest request = exchange.getIn().getBody(CourseRequest.class);
-                    if (request == null) {
-                        throw new IllegalArgumentException("Empty CourseRequest payload");
-                    }
-
-                    // Validate required fields
-                    if (request.getFullname() == null || request.getFullname().isEmpty()) {
-                        throw new IllegalArgumentException("Course fullname is required");
-                    }
-                    if (request.getShortname() == null || request.getShortname().isEmpty()) {
-                        throw new IllegalArgumentException("Course shortname is required");
-                    }
-                    if (request.getCategoryid() == null) {
-                        throw new IllegalArgumentException("Course categoryid is required");
-                    }
-
-                    log.info("[MoodleCourseRoute] Creating course: {}", request.getFullname());
-
-                    // Use MoodleService to create the course
-                    Map<String, Object> response = moodleService.createCourse(request);
-
-                    exchange.getMessage().setBody(response);
-                    exchange.getMessage().setHeader(Exchange.CONTENT_TYPE, "application/json");
-                })
-                .log("[MoodleCourseRoute] Moodle response: ${body}")
-                .marshal().json(JsonLibrary.Jackson);
+        // Nota: A rota AMQP foi removida em favor do listener RabbitMQ
+        // (MoodleCourseQueueConsumer)
+        // que usa @RabbitListener para consumir mensagens da fila
+        // moodle-create-course-queues
 
         // Route to enroll users in a course
         from("direct:enrollUser")

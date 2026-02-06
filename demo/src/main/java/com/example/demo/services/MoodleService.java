@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -35,54 +37,80 @@ public class MoodleService {
     }
 
     /**
-     * Create a course in Moodle
+     * Create a course in Moodle using form-urlencoded data
      * 
      * @param request CourseRequest with course details
      * @return Response from Moodle API
      */
     public Map<String, Object> createCourse(CourseRequest request) {
-        log.info("Creating course in Moodle: {}", request.getFullname());
-
+        log.info("[MoodleService.createCourse] Iniciando criação de curso: {}", request.getFullname());
         try {
-            // Build course payload
-            Map<String, Object> course = new HashMap<>();
-            course.put("fullname", request.getFullname());
-            course.put("shortname", request.getShortname());
-            course.put("categoryid", request.getCategoryid());
+            // Build form data with proper Moodle parameter format
+            MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+
+            // Required parameters
+            formData.add("wstoken", moodleToken);
+            formData.add("wsfunction", createFunction);
+            formData.add("moodlewsrestformat", format);
+
+            // Course data in Moodle format: courses[0][fieldname]=value
+            formData.add("courses[0][fullname]", request.getFullname());
+            formData.add("courses[0][shortname]", request.getShortname());
+            formData.add("courses[0][categoryid]", request.getCategoryid().toString());
 
             if (request.getSummary() != null && !request.getSummary().isEmpty()) {
-                course.put("summary", request.getSummary());
+                formData.add("courses[0][summary]", request.getSummary());
+                formData.add("courses[0][summaryformat]", "1");
             }
 
-            // Wrap in courses array
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("courses", Collections.singletonList(course));
+            log.debug(
+                    "[MoodleService.createCourse] Parâmetros da requisição: wstoken={}, wsfunction={}, fullname={}, shortname={}, categoryid={}",
+                    "***", createFunction, request.getFullname(), request.getShortname(), request.getCategoryid());
 
-            // Build URL with query parameters
-            String url = UriComponentsBuilder.fromHttpUrl(moodleUrl)
-                    .queryParam("wstoken", moodleToken)
-                    .queryParam("wsfunction", createFunction)
-                    .queryParam("moodlewsrestformat", format)
-                    .toUriString();
+            // Build URL
+            String url = moodleUrl;
+            log.info("[MoodleService.createCourse] URL do Moodle: {}", url);
+
+            // Set headers for form-urlencoded
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            // Create entity with form data
+            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(formData, headers);
+
+            log.debug("[MoodleService.createCourse] Enviando POST request para: {}", url);
 
             // Make HTTP POST request
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-
             ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
 
+            log.info("[MoodleService.createCourse] Resposta recebida - Status Code: {}", response.getStatusCode());
+            log.debug("[MoodleService.createCourse] Corpo da resposta: {}", response.getBody());
+
             if (response.getStatusCode() == HttpStatus.OK) {
-                log.info("Course created successfully: {}", response.getBody());
-                return response.getBody();
+                Map<String, Object> body = response.getBody();
+
+                // Check for Moodle error in response
+                if (body != null && body.containsKey("exception")) {
+                    String exception = (String) body.get("exception");
+                    String message = (String) body.getOrDefault("message", "Erro desconhecido");
+                    log.error("[MoodleService.createCourse] ERRO do Moodle: {} - {}", exception, message);
+                    return createErrorResponse(String.format("Moodle Error: %s - %s", exception, message), 400);
+                }
+
+                log.info("[MoodleService.createCourse] Curso criado com sucesso! Resposta: {}", body);
+                return body != null ? body : createSuccessResponse("Curso criado com sucesso");
             } else {
-                log.error("Failed to create course. Status: {}", response.getStatusCode());
-                return createErrorResponse("Failed to create course", response.getStatusCode().value());
+                log.error("[MoodleService.createCourse] Falha ao criar curso - Status: {} - Body: {}",
+                        response.getStatusCode(), response.getBody());
+                return createErrorResponse(
+                        String.format("Failed to create course. HTTP Status: %d", response.getStatusCode().value()),
+                        response.getStatusCode().value());
             }
 
         } catch (Exception e) {
-            log.error("Error creating course in Moodle", e);
-            return createErrorResponse(e.getMessage(), 500);
+            log.error("[MoodleService.createCourse] EXCEÇÃO ao criar curso - Mensagem: {}", e.getMessage(), e);
+            e.printStackTrace();
+            return createErrorResponse(String.format("Erro ao criar curso: %s", e.getMessage()), 500);
         }
     }
 
@@ -95,7 +123,7 @@ public class MoodleService {
      * @return Response from Moodle API
      */
     public Map<String, Object> enrollUser(Integer userId, Integer courseId, Integer roleId) {
-        log.info("Enrolling user {} in course {} with role {}", userId, courseId, roleId);
+        log.info("[MoodleService.enrollUser] Enrolando usuário {} no curso {} com role {}", userId, courseId, roleId);
 
         try {
             Map<String, Object> enrollment = new HashMap<>();
@@ -116,18 +144,22 @@ public class MoodleService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
 
+            log.debug("[MoodleService.enrollUser] Enviando POST request para inscrição");
             ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
 
+            log.info("[MoodleService.enrollUser] Resposta recebida - Status Code: {}", response.getStatusCode());
+
             if (response.getStatusCode() == HttpStatus.OK) {
-                log.info("User enrolled successfully");
+                log.info("[MoodleService.enrollUser] Usuário inscrito com sucesso");
                 return response.getBody();
             } else {
-                log.error("Failed to enroll user. Status: {}", response.getStatusCode());
+                log.error("[MoodleService.enrollUser] Falha ao inscrever usuário. Status: {}",
+                        response.getStatusCode());
                 return createErrorResponse("Failed to enroll user", response.getStatusCode().value());
             }
 
         } catch (Exception e) {
-            log.error("Error enrolling user in Moodle", e);
+            log.error("[MoodleService.enrollUser] Erro ao inscrever usuário no Moodle: {}", e.getMessage(), e);
             return createErrorResponse(e.getMessage(), 500);
         }
     }
@@ -142,7 +174,7 @@ public class MoodleService {
      * @return Response from Moodle API
      */
     public Map<String, Object> createUser(String username, String firstName, String lastName, String email) {
-        log.info("Creating user in Moodle: {}", username);
+        log.info("[MoodleService.createUser] Criando usuário no Moodle: {}", username);
 
         try {
             Map<String, Object> user = new HashMap<>();
@@ -169,18 +201,21 @@ public class MoodleService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
 
+            log.debug("[MoodleService.createUser] Enviando POST request para criação de usuário");
             ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
 
+            log.info("[MoodleService.createUser] Resposta recebida - Status Code: {}", response.getStatusCode());
+
             if (response.getStatusCode() == HttpStatus.OK) {
-                log.info("User created successfully: {}", response.getBody());
+                log.info("[MoodleService.createUser] Usuário criado com sucesso: {}", response.getBody());
                 return response.getBody();
             } else {
-                log.error("Failed to create user. Status: {}", response.getStatusCode());
+                log.error("[MoodleService.createUser] Falha ao criar usuário. Status: {}", response.getStatusCode());
                 return createErrorResponse("Failed to create user", response.getStatusCode().value());
             }
 
         } catch (Exception e) {
-            log.error("Error creating user in Moodle", e);
+            log.error("[MoodleService.createUser] Erro ao criar usuário no Moodle: {}", e.getMessage(), e);
             return createErrorResponse(e.getMessage(), 500);
         }
     }
@@ -326,6 +361,16 @@ public class MoodleService {
                 successfulEnrollments.size(), failedEnrollments.size());
 
         return result;
+    }
+
+    /**
+     * Helper method to create success response
+     */
+    private Map<String, Object> createSuccessResponse(String message) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", message);
+        return response;
     }
 
     /**

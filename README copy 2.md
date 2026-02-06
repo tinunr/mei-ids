@@ -133,7 +133,7 @@ Configuração (excerto):
 app.rabbitmq.exchange=moodle_exchange
 app.rabbitmq.queue.createCourse=moodle.create.course.queue
 app.rabbitmq.queue.syncCourse=moodle.sync.course.queue
-app.moodle.url=http:/localhost/webservice/rest/server.php
+app.moodle.url=http://localhost/webservice/rest/server.php
 app.moodle.token=<TOKEN_DO_MOODLE>
 ```
 
@@ -354,7 +354,7 @@ Parâmetros relevantes (demo/src/main/resources/application.properties):
 app.rabbitmq.exchange=moodle_exchange
 app.rabbitmq.queue.createCourse=moodle.create.course.queue
 app.rabbitmq.queue.syncCourse=moodle.sync.course.queue
-app.moodle.url=http:/localhost/webservice/rest/server.php
+app.moodle.url=http://localhost/webservice/rest/server.php
 app.moodle.token=<TOKEN_DO_MOODLE>
 ```
 

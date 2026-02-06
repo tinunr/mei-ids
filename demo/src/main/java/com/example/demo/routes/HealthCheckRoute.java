@@ -19,16 +19,18 @@ public class HealthCheckRoute extends RouteBuilder {
         from("timer:health?period=9000")
                 .routeId("health-check-route")
                 .log("[HealthCheckRoute] application is alive at ${date:now:yyyy-MM-dd HH:mm:ss}")
-                .process(exchange -> {
-                    String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
+                // .process(exchange -> {
+                // String timestamp =
+                // LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
 
-                    // Enviar notificação de email com informação de health check
-                    messageProducer.sendEmailNotification(
-                            "tinu5nr@gmail.com",
-                            "Health Check - Aplicação Ativa",
-                            "<p>A aplicação está funcionando corretamente.</p><p>Timestamp: " + timestamp + "</p>",
-                            "A aplicação está funcionando corretamente. Timestamp: " + timestamp);
-                })
+                // // Enviar notificação de email com informação de health check
+                // messageProducer.sendEmailNotification(
+                // "tinu5nr@gmail.com",
+                // "Health Check - Aplicação Ativa",
+                // "<p>A aplicação está funcionando corretamente.</p><p>Timestamp: " + timestamp
+                // + "</p>",
+                // "A aplicação está funcionando corretamente. Timestamp: " + timestamp);
+                // })
                 .end();
     }
 }
